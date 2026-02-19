@@ -1,29 +1,23 @@
 import pytest
 import requests
-import time
-
+import uuid
 
 BASE_URL = "http://localhost:5000"
 
 @pytest.fixture
 def base_url():
-    """
-    Gibt die Basis-URL der API zurück.
-    """
     return BASE_URL
 
 @pytest.fixture
 def unique_username():
     """
-    Erzeugt einen eindeutigen Benutzernamen mit Zeitstempel,
+    Erzeugt einen garantiert eindeutigen Benutzernamen mittels UUID.
     """
-    return f"user_{int(time.time())}"
+    # generiert eine zufällige ID, wir nehmen nur die ersten 8 Zeichen
+    return f"user_{uuid.uuid4().hex[:8]}"
 
 @pytest.fixture
 def register_user(base_url, unique_username):
-    """
-    Registriert einen neuen Benutzer und gibt den Benutzernamen zurück.
-    """
     response = requests.post(
         f"{base_url}/api/auth/register",
         json={
@@ -36,9 +30,6 @@ def register_user(base_url, unique_username):
 
 @pytest.fixture
 def login_user(base_url, register_user):
-    """
-    Meldet den registrierten Benutzer an und gibt das JWT-Token zurück.
-    """
     response = requests.post(
         f"{base_url}/api/auth/login",
         json={
