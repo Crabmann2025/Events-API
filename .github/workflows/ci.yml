@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Code auschecken
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Docker-Image bauen
+      - name: Build Docker image
+        run: docker build -t events-api:latest .
+
+      # Container starten
+      - name: Start Docker container
+        run: |
+          # Startet den Container im Detached-Modus (-d) und gibt ihm einen Namen
+          docker run -d --name events-api-container -p 5000:5000 events-api:latest
+          
+          # Kurz warten, damit Flask im Container Zeit hat hochzufahren
+          sleep 5
+
+      # Health-Check prüfen
+      - name: Check API Health
+        run: |
+          # Ruft den Health-Endpoint deiner API auf. Schlägt fehl (exit 1), wenn die API nicht antwortet.
+          curl -f http://localhost:5000/api/health || exit 1
+
+      # Python einrichten
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Abhängigkeiten installieren
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          # Stellt sicher, dass pytest installiert ist, falls es in der requirements.txt fehlt
+          pip install pytest requests 
+
+      # Tests ausführen
+      - name: Run test suite
+        run: |
+          # Führt pytest gegen den laufenden Container aus
+          pytest -v
+
+      # Container aufräumen
+      - name: Cleanup Container
+        if: always()
+        run: |
+          # Stoppt und löscht den Container. "|| true" verhindert, dass dieser Step 
+          # fehlschlägt, falls der Container aus irgendeinem Grund schon weg ist.
+          docker stop events-api-container || true
+          docker rm events-api-container || true                       
